@@ -10,21 +10,46 @@ end-to-end after provisioning.
 
 | Role | Lab type | Description |
 |---|---|---|
-| `zt_load_test_ocp` | OCP tenant labs | Discovers showroom route, triggers solve + validate on all modules, reports via `agnosticd_user_info` |
-| `zt_load_test_rhel` | RHEL/VM labs | Same as above for VM-based showrooms |
+| `zt_load_test_ocp` | OCP tenant labs | Triggers solve + validate on all modules, reports via `agnosticd_user_info` |
+| `zt_load_test_rhel` | RHEL/VM labs | Same for VM-based showrooms |
 
-## Usage (AgV common.yaml)
+## How runner deployment works
+
+The runner container (`zerotouch-automation`) is deployed **natively by the
+`showroom/zerotouch` helm chart** when you set:
+
+```yaml
+ocp4_workload_showroom_deployer_chart_name: zerotouch
+ocp4_workload_showroom_deployer_chart_version: "1.9.19"
+```
+
+To use a custom runner image (e.g. with `kubernetes.core` pre-installed for
+OCP-native labs), set the image via the showroom role var
+(requires agnosticd/showroom PR #52):
+
+```yaml
+ocp4_workload_showroom_runtime_automation_image: "quay.io/rhpds/zt-runner:v1.0.0"
+```
+
+## Usage in AgV
 
 ```yaml
 requirements_content:
   collections:
+  - name: https://github.com/agnosticd/showroom.git
+    type: git
+    version: v1.6.x          # or zt-runtime-automation-image branch until PR #52 merges
   - name: https://github.com/rhpds/rhpds-loadtester.git
     type: git
     version: "{{ tag }}"
 
 workloads: >-
   {{
-    ['agnosticd.showroom.ocp4_workload_showroom', ...] +
+    [
+      'agnosticd.namespaced_workloads.ocp4_workload_tenant_keycloak_user',
+      'agnosticd.namespaced_workloads.ocp4_workload_tenant_namespace',
+      'agnosticd.showroom.ocp4_workload_showroom'
+    ] +
     (
       ['rhpds.loadtester.zt_load_test_ocp']
       if zt_load_testing_enabled | default(false) | bool
@@ -32,25 +57,14 @@ workloads: >-
     )
   }}
 
-# Parameter in __meta__.catalog.parameters:
+# zerotouch chart — runner deployed natively
+ocp4_workload_showroom_deployer_chart_name: zerotouch
+ocp4_workload_showroom_deployer_chart_version: "1.9.19"
+ocp4_workload_showroom_runtime_automation_image: "quay.io/rhpds/zt-runner:v1.0.0"
+
+# Load test checkbox
+# __meta__.catalog.parameters:
 # - name: zt_load_testing_enabled
 #   formLabel: "Run ZT Load Test"
-#   openAPIV3Schema:
-#     type: boolean
-#     default: false
+#   openAPIV3Schema: {type: boolean, default: false}
 ```
-
-## Prerequisites
-
-The ZT runner must already be deployed in the showroom namespace.
-For OCP labs this is handled by the showroom ZT configuration
-(`ocp4_workload_showroom` with `zero_touch_ui_enabled: true` and the
-zerotouch helm chart which includes the runner container).
-
-## Runner image
-
-`quay.io/rhpds/zt-runner:v1.0.0` — unified image with:
-- Python: `kubernetes`, `jmespath`, `netaddr`, `hvac`, `pyOpenSSL`, `passlib`, `boto3`
-- Collections: `kubernetes.core`, `ansible.posix`, `community.general`,
-  `community.crypto`, `community.hashi_vault`, `ansible.netcommon`,
-  `community.mysql`, `community.postgresql`
