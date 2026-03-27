@@ -1,0 +1,20 @@
+---
+namespace: rhpds
+name: loadtester
+version: 1.0.0
+readme: README.md
+description: >-
+  ZT (Zero Touch) runner roles for OCP and RHEL labs.
+  Adds a zerotouch-automation runner sidecar to showroom pods for automated
+  solve/validate/setup grading. OCP mode uses kubernetes.core; RHEL mode SSHes to bastion.
+authors:
+  - RHDP Team <rhdp-team@redhat.com>
+license:
+  - MIT-0
+tags:
+  - zerotouch
+  - showroom
+  - grading
+  - ocp
+  - rhel
+repository: https://github.com/rhpds/rhpds-loadtester

@@ -1,0 +1,75 @@
+---
+# Add runner container to showroom deployment (idempotent — checks first)
+
+- name: Get showroom deployment
+  kubernetes.core.k8s_info:
+    host: "{{ zt_runner_ocp_openshift_api_url | default(omit) }}"
+    api_key: "{{ zt_runner_ocp_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    api_version: apps/v1
+    kind: Deployment
+    name: showroom
+    namespace: "{{ zt_runner_ocp_showroom_namespace }}"
+  register: r_deploy
+
+- name: Check if runner container already present
+  ansible.builtin.set_fact:
+    _zt_runner_ocp_already_present: >-
+      {{
+        r_deploy.resources[0].spec.template.spec.containers
+        | selectattr('name', 'equalto', 'runner')
+        | list | length > 0
+      }}
+  when: r_deploy.resources | length > 0
+
+- name: Add runner container (OCP mode — kubernetes.core, no SSH)
+  when:
+    - r_deploy.resources | length > 0
+    - not (_zt_runner_ocp_already_present | default(false) | bool)
+  kubernetes.core.k8s_json_patch:
+    host: "{{ zt_runner_ocp_openshift_api_url | default(omit) }}"
+    api_key: "{{ zt_runner_ocp_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    api_version: apps/v1
+    kind: Deployment
+    name: showroom
+    namespace: "{{ zt_runner_ocp_showroom_namespace }}"
+    patch:
+      - op: add
+        path: /spec/template/spec/containers/-
+        value:
+          name: runner
+          image: "{{ zt_runner_ocp_image }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8501
+              name: runner
+              protocol: TCP
+          env:
+            - {name: PORT, value: "{{ zt_runner_ocp_port }}"}
+            - {name: DEBUG, value: "true"}
+            - {name: GUID, value: "{{ guid }}"}
+            - {name: DOMAIN, value: "{{ openshift_cluster_ingress_domain | default('') }}"}
+            - {name: LAB_USER, value: "{{ zt_runner_ocp_lab_user }}"}
+            - {name: ANSIBLE_USER, value: localonly}
+            - {name: ANSIBLE_PASSWORD, value: localonly}
+            - {name: BASTION_HOST, value: localhost}
+            - {name: BASTION_PORT, value: "22"}
+          volumeMounts:
+            - name: showroom-files
+              mountPath: /app/runtime-automation
+              subPath: repo/runtime-automation
+            - name: showroom-files
+              mountPath: /app/artifacts
+              subPath: artifacts
+            - name: showroom-files
+              mountPath: /app/logs
+              subPath: logs
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+
+- name: Runner container already present — skipping patch
+  when: _zt_runner_ocp_already_present | default(false) | bool
+  ansible.builtin.debug:
+    msg: "Runner container already in deployment {{ zt_runner_ocp_showroom_namespace }}/showroom — no patch needed"

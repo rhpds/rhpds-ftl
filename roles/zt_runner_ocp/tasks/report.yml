@@ -1,0 +1,72 @@
+---
+# =============================================================================
+# report.yml — Emit full lab connection info + runner status via agnosticd_user_info
+#
+# Reads from vars already set by previous roles:
+#   ocp4_workload_tenant_keycloak_username (from ocp4_workload_tenant_keycloak_user)
+#   ocp4_workload_tenant_keycloak_user_password
+#   openshift_console_url (from ocp4_workload_tenant_keycloak_user)
+#   openshift_api_url
+#   lab_ui_url (from ocp4_workload_showroom)
+# =============================================================================
+
+- name: Get showroom route
+  kubernetes.core.k8s_info:
+    host: "{{ zt_runner_ocp_openshift_api_url | default(omit) }}"
+    api_key: "{{ zt_runner_ocp_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    api_version: route.openshift.io/v1
+    kind: Route
+    namespace: "{{ zt_runner_ocp_showroom_namespace }}"
+    label_selectors:
+      - "app=showroom"
+  register: r_showroom_route
+
+- name: Set showroom base URL
+  ansible.builtin.set_fact:
+    _zt_report_base_url: "https://{{ r_showroom_route.resources[0].spec.host }}"
+  when: r_showroom_route.resources | length > 0
+
+- name: Wait for runner API to be ready
+  ansible.builtin.uri:
+    url: "{{ _zt_report_base_url }}/runner/api/config"
+    validate_certs: false
+    status_code: 200
+  register: r_runner_config
+  retries: 12
+  delay: 10
+  until: r_runner_config.status == 200
+  ignore_errors: true
+  when: _zt_report_base_url is defined
+
+- name: Emit full lab info + ZT runner status via agnosticd_user_info
+  agnosticd.core.agnosticd_user_info:
+    data:
+      # ── Lab UI ────────────────────────────────────────────────────────────
+      showroom_url: "{{ _zt_report_base_url | default(lab_ui_url | default('unknown')) }}"
+
+      # ── OCP user credentials ──────────────────────────────────────────────
+      ocp_username: "{{ ocp4_workload_tenant_keycloak_username | default(zt_runner_ocp_lab_user) }}"
+      ocp_password: "{{ ocp4_workload_tenant_keycloak_user_password | default(common_password | default('')) }}"
+      ocp_console_url: "{{ openshift_console_url | default('') }}"
+      ocp_api_url: "{{ openshift_api_url | default('') }}"
+
+      # ── Student namespace ─────────────────────────────────────────────────
+      student_namespace: "zt-test-{{ ocp4_workload_tenant_keycloak_username | default(zt_runner_ocp_lab_user) }}"
+
+      # ── ZT runner ─────────────────────────────────────────────────────────
+      zt_runner_mode: ocp
+      zt_runner_url: "{{ _zt_report_base_url | default('unknown') }}/runner"
+      zt_runner_status: >-
+        {{ 'ready' if (r_runner_config is succeeded and _zt_report_base_url is defined) else 'not_ready' }}
+      zt_runner_modules: "{{ r_runner_config.json | default({}) }}"
+
+    msg: |
+      Lab is ready!
+      Showroom:  {{ _zt_report_base_url | default('unknown') }}
+      OCP Console: {{ openshift_console_url | default('unknown') }}
+      Username: {{ ocp4_workload_tenant_keycloak_username | default(zt_runner_ocp_lab_user) }}
+      Password: {{ ocp4_workload_tenant_keycloak_user_password | default(common_password | default('?')) }}
+      Namespace: zt-test-{{ ocp4_workload_tenant_keycloak_username | default(zt_runner_ocp_lab_user) }}
+      ZT Runner: {{ 'READY' if (r_runner_config is succeeded and _zt_report_base_url is defined) else 'NOT READY' }}
+  ignore_errors: true

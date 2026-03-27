@@ -1,0 +1,43 @@
+---
+# =============================================================================
+# zt_runner_ocp defaults
+#
+# All vars auto-derived from what previous workload roles already set:
+#   ocp4_workload_tenant_keycloak_user  → ocp4_workload_tenant_keycloak_username
+#                                          openshift_api_url, openshift_api_key
+#                                          openshift_cluster_ingress_domain
+#   ocp4_workload_showroom              → lab_ui_url
+#
+# In AgV common.yaml, only ONE extra line is needed beyond what the other
+# workload roles already require:
+#   zt_runner_enabled: true   (the checkbox)
+# =============================================================================
+
+# Runner image — unified image with all collections baked in
+zt_runner_ocp_image: "quay.io/rhpds/zt-runner:latest"
+
+# Lab user — defaults to keycloak username set by ocp4_workload_tenant_keycloak_user
+zt_runner_ocp_lab_user: "{{ ocp4_workload_tenant_keycloak_username | default('devuser-' + guid) }}"
+
+# Showroom namespace — mirrors what ocp4_workload_showroom uses
+zt_runner_ocp_showroom_namespace: >-
+  {{
+    ocp4_workload_showroom_namespace
+    | default(ocp4_workload_tenant_keycloak_username | default('devuser-' + guid) + '-showroom')
+  }}
+
+# RBAC — unique ClusterRole per guid to avoid cross-lab collisions
+zt_runner_ocp_clusterrole_name: "zt-runner-{{ guid }}"
+
+# Runner API port
+zt_runner_ocp_port: "8501"
+
+# Cluster connection — uses same creds as the rest of the AgD workloads
+zt_runner_ocp_openshift_api_url: "{{ openshift_api_url | default('') }}"
+zt_runner_ocp_openshift_api_token: "{{ openshift_api_key | default('') }}"
+
+# Whether to emit lab connection info + runner status at the end
+zt_runner_generate_report: true
+
+# Seconds to wait for runner pod to be ready before checking API
+zt_runner_report_wait: 30

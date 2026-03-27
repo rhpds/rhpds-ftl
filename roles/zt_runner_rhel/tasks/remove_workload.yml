@@ -1,0 +1,5 @@
+---
+# No ClusterRole needed for RHEL mode — runner SSHes out, no k8s calls
+- name: Notify removal
+  ansible.builtin.debug:
+    msg: "zt_runner_rhel removal — showroom pod will be cleaned by ocp4_workload_showroom"

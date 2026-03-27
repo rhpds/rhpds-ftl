@@ -1,0 +1,53 @@
+---
+# Create ClusterRole allowing showroom SA to manage student resources
+
+- name: Create ZT runner ClusterRole
+  kubernetes.core.k8s:
+    host: "{{ zt_runner_ocp_openshift_api_url | default(omit) }}"
+    api_key: "{{ zt_runner_ocp_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        name: "{{ zt_runner_ocp_clusterrole_name }}"
+        labels:
+          created-by: rhpds-loadtester
+          guid: "{{ guid }}"
+      rules:
+        - apiGroups: [""]
+          resources: ["namespaces"]
+          verbs: ["get", "list", "create", "patch", "update"]
+        - apiGroups: [""]
+          resources: ["configmaps", "pods", "secrets", "services"]
+          verbs: ["get", "list", "create", "patch", "update", "delete"]
+        - apiGroups: ["apps"]
+          resources: ["deployments", "replicasets"]
+          verbs: ["get", "list", "create", "patch", "update"]
+        - apiGroups: ["route.openshift.io"]
+          resources: ["routes"]
+          verbs: ["get", "list", "create", "patch", "update"]
+
+- name: Create ZT runner ClusterRoleBinding
+  kubernetes.core.k8s:
+    host: "{{ zt_runner_ocp_openshift_api_url | default(omit) }}"
+    api_key: "{{ zt_runner_ocp_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: "{{ zt_runner_ocp_clusterrole_name }}"
+        labels:
+          created-by: rhpds-loadtester
+          guid: "{{ guid }}"
+      subjects:
+        - kind: ServiceAccount
+          name: showroom
+          namespace: "{{ zt_runner_ocp_showroom_namespace }}"
+      roleRef:
+        kind: ClusterRole
+        name: "{{ zt_runner_ocp_clusterrole_name }}"
+        apiGroup: rbac.authorization.k8s.io

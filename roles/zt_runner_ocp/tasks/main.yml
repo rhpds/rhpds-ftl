@@ -1,0 +1,8 @@
+---
+- name: Running zt_runner_ocp provision tasks
+  when: ACTION == "provision"
+  ansible.builtin.include_tasks: workload.yml
+
+- name: Running zt_runner_ocp removal tasks
+  when: ACTION == "destroy"
+  ansible.builtin.include_tasks: remove_workload.yml

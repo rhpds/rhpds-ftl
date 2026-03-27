@@ -1,0 +1,20 @@
+---
+- name: Delete ZT runner ClusterRoleBinding
+  kubernetes.core.k8s:
+    host: "{{ zt_runner_ocp_openshift_api_url | default(omit) }}"
+    api_key: "{{ zt_runner_ocp_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    state: absent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    name: "{{ zt_runner_ocp_clusterrole_name }}"
+
+- name: Delete ZT runner ClusterRole
+  kubernetes.core.k8s:
+    host: "{{ zt_runner_ocp_openshift_api_url | default(omit) }}"
+    api_key: "{{ zt_runner_ocp_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    state: absent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    name: "{{ zt_runner_ocp_clusterrole_name }}"

@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: zt_runner_rhel
+  author: RHDP Team
+  description: Adds ZT runner sidecar to showroom pod for RHEL/VM labs (SSH to bastion)
+  license: MIT-0
+  min_ansible_version: "2.15"
+dependencies: []

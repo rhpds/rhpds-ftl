@@ -1,0 +1,75 @@
+---
+# Add runner container (RHEL/SSH mode — SSHes to bastion)
+
+- name: Get showroom deployment
+  kubernetes.core.k8s_info:
+    host: "{{ zt_runner_rhel_openshift_api_url | default(omit) }}"
+    api_key: "{{ zt_runner_rhel_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    api_version: apps/v1
+    kind: Deployment
+    name: showroom
+    namespace: "{{ zt_runner_rhel_showroom_namespace }}"
+  register: r_deploy
+
+- name: Check if runner container already present
+  ansible.builtin.set_fact:
+    _zt_runner_rhel_already_present: >-
+      {{
+        r_deploy.resources[0].spec.template.spec.containers
+        | selectattr('name', 'equalto', 'runner')
+        | list | length > 0
+      }}
+  when: r_deploy.resources | length > 0
+
+- name: Add runner container (RHEL mode — SSH env vars)
+  when:
+    - r_deploy.resources | length > 0
+    - not (_zt_runner_rhel_already_present | default(false) | bool)
+  kubernetes.core.k8s_json_patch:
+    host: "{{ zt_runner_rhel_openshift_api_url | default(omit) }}"
+    api_key: "{{ zt_runner_rhel_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    api_version: apps/v1
+    kind: Deployment
+    name: showroom
+    namespace: "{{ zt_runner_rhel_showroom_namespace }}"
+    patch:
+      - op: add
+        path: /spec/template/spec/containers/-
+        value:
+          name: runner
+          image: "{{ zt_runner_rhel_image }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8501
+              name: runner
+              protocol: TCP
+          env:
+            - {name: PORT, value: "{{ zt_runner_rhel_port }}"}
+            - {name: DEBUG, value: "true"}
+            - {name: GUID, value: "{{ guid }}"}
+            - {name: DOMAIN, value: "{{ openshift_cluster_ingress_domain | default('') }}"}
+            - {name: BASTION_HOST, value: "{{ zt_runner_rhel_bastion_host }}"}
+            - {name: BASTION_PORT, value: "{{ zt_runner_rhel_bastion_port }}"}
+            - {name: ANSIBLE_USER, value: "{{ zt_runner_rhel_bastion_user }}"}
+            - {name: ANSIBLE_PASSWORD, value: "{{ zt_runner_rhel_bastion_password }}"}
+            - {name: VAULT_PASSWORD, value: "{{ zt_runner_rhel_vault_password }}"}
+          volumeMounts:
+            - name: showroom-files
+              mountPath: /app/runtime-automation
+              subPath: repo/runtime-automation
+            - name: showroom-files
+              mountPath: /app/artifacts
+              subPath: artifacts
+            - name: showroom-files
+              mountPath: /app/logs
+              subPath: logs
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+
+- name: Runner already present — skipping
+  when: _zt_runner_rhel_already_present | default(false) | bool
+  ansible.builtin.debug:
+    msg: "Runner container already in {{ zt_runner_rhel_showroom_namespace }}/showroom"

@@ -1,0 +1,31 @@
+---
+# zt_runner_ocp — workload tasks
+# Adds zerotouch-automation runner sidecar to the showroom deployment.
+# Patches nginx configmap and creates RBAC for the showroom SA.
+
+- name: Create ZT runner ClusterRole
+  ansible.builtin.include_tasks: rbac.yml
+
+- name: Patch nginx configmap with /runner route
+  ansible.builtin.include_tasks: nginx_patch.yml
+
+- name: Add runner container to showroom deployment
+  ansible.builtin.include_tasks: deployment_patch.yml
+
+- name: Report zt_runner_ocp complete
+  ansible.builtin.debug:
+    msg: >-
+      ZT runner (OCP mode) deployed in {{ zt_runner_ocp_showroom_namespace }}.
+      Runner image: {{ zt_runner_ocp_image }}
+      Lab user: {{ zt_runner_ocp_lab_user }}
+
+- name: Generate and emit test report
+  when: zt_runner_generate_report | default(true) | bool
+  ansible.builtin.include_tasks: report.yml
+
+- name: Report zt_runner_ocp complete
+  ansible.builtin.debug:
+    msg: >-
+      ZT runner (OCP mode) deployed in {{ zt_runner_ocp_showroom_namespace }}.
+      Runner image: {{ zt_runner_ocp_image }}
+      Lab user: {{ zt_runner_ocp_lab_user }}

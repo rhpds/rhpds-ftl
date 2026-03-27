@@ -1,0 +1,42 @@
+---
+# =============================================================================
+# zt_runner_rhel defaults
+#
+# All vars auto-derived from what cloud-vms-base and bastion role already set:
+#   cloud-vms-base   → bastion_public_hostname, sandbox_openshift_apps_domain
+#   bastion role     → bastion_ssh_user_name (lab-user), bastion_ssh_password
+#   common.yaml      → common_password, guid
+#   ocp4_workload_showroom → ocp4_workload_showroom_namespace
+#
+# In AgV common.yaml, only ONE extra line is needed beyond what the other
+# workload roles already require:
+#   zt_runner_enabled: true   (the checkbox)
+# =============================================================================
+
+# Runner image — same unified image for all lab types
+zt_runner_rhel_image: "quay.io/rhpds/zt-runner:latest"
+
+# Showroom namespace — mirrors what ocp4_workload_showroom uses
+zt_runner_rhel_showroom_namespace: >-
+  {{ ocp4_workload_showroom_namespace | default('showroom-' + guid) }}
+
+# Bastion SSH — auto-derived from cloud-vms-base / bastion role
+zt_runner_rhel_bastion_host: "{{ bastion_public_hostname | default('') }}"
+zt_runner_rhel_bastion_port: "{{ bastion_ssh_port | default('22') }}"
+zt_runner_rhel_bastion_user: "{{ bastion_ssh_user_name | default('lab-user') }}"
+zt_runner_rhel_bastion_password: >-
+  {{ bastion_ssh_password | default(common_password | default('')) }}
+
+# Vault password (for labs using Ansible Vault encrypted secrets)
+zt_runner_rhel_vault_password: "{{ vault_password | default('') }}"
+
+# Runner API port
+zt_runner_rhel_port: "8501"
+
+# Cluster connection
+zt_runner_rhel_openshift_api_url: "{{ openshift_api_url | default('') }}"
+zt_runner_rhel_openshift_api_token: "{{ openshift_api_key | default('') }}"
+
+# Whether to emit lab connection info + runner status at the end
+zt_runner_generate_report: true
+zt_runner_report_wait: 30

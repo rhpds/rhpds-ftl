@@ -1,0 +1,70 @@
+---
+# =============================================================================
+# report.yml — Emit full lab connection info + runner status via agnosticd_user_info
+#
+# Reads from vars already set by previous roles / cloud-vms-base:
+#   bastion_public_hostname, bastion_ssh_user_name, bastion_ssh_password
+#   groups['nodes'][0] for the worker/node hostname
+#   lab_ui_url from ocp4_workload_showroom
+# =============================================================================
+
+- name: Get showroom route
+  kubernetes.core.k8s_info:
+    host: "{{ zt_runner_rhel_openshift_api_url | default(omit) }}"
+    api_key: "{{ zt_runner_rhel_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    api_version: route.openshift.io/v1
+    kind: Route
+    namespace: "{{ zt_runner_rhel_showroom_namespace }}"
+    label_selectors:
+      - "app=showroom"
+  register: r_showroom_route
+
+- name: Set showroom base URL
+  ansible.builtin.set_fact:
+    _zt_report_base_url: "https://{{ r_showroom_route.resources[0].spec.host }}"
+  when: r_showroom_route.resources | length > 0
+
+- name: Wait for runner API to be ready
+  ansible.builtin.uri:
+    url: "{{ _zt_report_base_url }}/runner/api/config"
+    validate_certs: false
+    status_code: 200
+  register: r_runner_config
+  retries: 12
+  delay: 10
+  until: r_runner_config.status == 200
+  ignore_errors: true
+  when: _zt_report_base_url is defined
+
+- name: Emit full lab info + ZT runner status via agnosticd_user_info
+  agnosticd.core.agnosticd_user_info:
+    data:
+      # ── Lab UI ────────────────────────────────────────────────────────────
+      showroom_url: "{{ _zt_report_base_url | default(lab_ui_url | default('unknown')) }}"
+
+      # ── Bastion access ────────────────────────────────────────────────────
+      bastion_host: "{{ bastion_public_hostname | default('') }}"
+      bastion_ssh_port: "{{ bastion_ssh_port | default('22') }}"
+      bastion_ssh_user: "{{ bastion_ssh_user_name | default('lab-user') }}"
+      bastion_ssh_password: "{{ bastion_ssh_password | default(common_password | default('')) }}"
+
+      # ── Node/Worker access (SSH via bastion) ──────────────────────────────
+      node_host: "{{ groups['nodes'][0] | default('') }}"
+      node_ssh_user: "{{ bastion_ssh_user_name | default('lab-user') }}"
+      node_ssh_password: "{{ bastion_ssh_password | default(common_password | default('')) }}"
+
+      # ── ZT runner ─────────────────────────────────────────────────────────
+      zt_runner_mode: rhel
+      zt_runner_url: "{{ _zt_report_base_url | default('unknown') }}/runner"
+      zt_runner_status: >-
+        {{ 'ready' if (r_runner_config is succeeded and _zt_report_base_url is defined) else 'not_ready' }}
+      zt_runner_modules: "{{ r_runner_config.json | default({}) }}"
+
+    msg: |
+      Lab is ready!
+      Showroom: {{ _zt_report_base_url | default('unknown') }}
+      Bastion:  ssh {{ bastion_ssh_user_name | default('lab-user') }}@{{ bastion_public_hostname | default('?') }} (password: {{ bastion_ssh_password | default(common_password | default('?')) }})
+      Node:     ssh {{ groups['nodes'][0] | default('?') }} (from bastion, same password)
+      ZT Runner: {{ 'READY' if (r_runner_config is succeeded and _zt_report_base_url is defined) else 'NOT READY' }}
+  ignore_errors: true
