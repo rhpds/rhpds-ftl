@@ -20,6 +20,12 @@ ocp4_workload_runtime_automation_k8s_showroom_namespace: >-
 # Secret name in showroom namespace that holds the kubeconfig
 ocp4_workload_runtime_automation_k8s_secret_name: zt-runner-kubeconfig
 
-# Cluster connection
+# Cluster connection (uses agnosticd-admin token at provision time — never stored in showroom)
 ocp4_workload_runtime_automation_k8s_openshift_api_url: "{{ openshift_api_url | default('') }}"
 ocp4_workload_runtime_automation_k8s_openshift_api_token: "{{ openshift_api_key | default('') }}"
+
+# --- Lab type mode ---
+# false (default): multi-user namespace lab — scoped SA + token per student namespace
+# true: dedicated cluster lab — cluster-admin kubeconfig stored in showroom Secret
+#   Use impersonate_user: in playbooks to test non-admin user scenarios
+ocp4_workload_runtime_automation_k8s_cluster_admin: false
