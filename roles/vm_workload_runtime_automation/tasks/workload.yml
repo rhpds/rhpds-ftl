@@ -75,7 +75,7 @@
   failed_when: false
   changed_when: false
 
-- name: Write SSH config with node host entries
+- name: Write SSH config with bastion + node host entries
   become: true
   ansible.builtin.blockinfile:
     path: "{{ vm_workload_runtime_automation_ssh_key_dest | dirname }}/config"
@@ -83,8 +83,16 @@
     owner: "{{ vm_workload_runtime_automation_showroom_user }}"
     group: "{{ vm_workload_runtime_automation_showroom_user }}"
     mode: '0600'
-    marker: "# {mark} ZT node hosts"
+    marker: "# {mark} ZT hosts"
     block: |
+      # bastion — runner SSHes here for bastion-level tasks
+      Host bastion
+        HostName {{ ansible_host }}
+        User {{ student_name | default('lab-user') }}
+        IdentityFile /app/.ssh/id_rsa
+        StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+
       {% for item in r_getent.results %}
       {% if item.rc == 0 and item.stdout != '' %}
       Host {{ item.item }}
