@@ -1,31 +1,26 @@
 ---
-# SA name created in each student namespace
+# SA name created in the showroom namespace
 ocp4_workload_runtime_automation_k8s_sa_name: zt-runner
+
+# Student username — auto-derived from keycloak workload
+ocp4_workload_runtime_automation_k8s_username: >-
+  {{ ocp4_workload_tenant_keycloak_username | default('user-' + guid) }}
+
+# Showroom namespace — mirrors ocp4_workload_showroom default
+ocp4_workload_runtime_automation_k8s_showroom_namespace: >-
+  {{ ocp4_workload_showroom_namespace | default('showroom-' + guid) }}
 
 # Student namespace suffixes — same list as ocp4_workload_tenant_namespace
 ocp4_workload_runtime_automation_k8s_namespace_suffixes: >-
   {{ ocp4_workload_tenant_namespace_suffixes | default([]) }}
 
-# Username — auto-derived from keycloak workload
-ocp4_workload_runtime_automation_k8s_username: >-
-  {{ ocp4_workload_tenant_keycloak_username | default('user-' + guid) }}
-
-# Showroom namespace — where kubeconfig Secret is stored (runner can read it)
-ocp4_workload_runtime_automation_k8s_showroom_namespace: >-
-  {{
-    ocp4_workload_showroom_namespace
-    | default(ocp4_workload_tenant_keycloak_username | default('user-' + guid) + '-showroom')
-  }}
-
 # Secret name in showroom namespace that holds the kubeconfig
 ocp4_workload_runtime_automation_k8s_secret_name: zt-runner-kubeconfig
 
-# Cluster connection (uses agnosticd-admin token at provision time — never stored in showroom)
+# Cluster connection (used at provision time only — never stored in showroom)
 ocp4_workload_runtime_automation_k8s_openshift_api_url: "{{ openshift_api_url | default('') }}"
 ocp4_workload_runtime_automation_k8s_openshift_api_token: "{{ openshift_api_key | default('') }}"
 
-# --- Lab type mode ---
-# false (default): multi-user namespace lab — scoped SA + token per student namespace
-# true: dedicated cluster lab — cluster-admin kubeconfig stored in showroom Secret
-#   Use impersonate_user: in playbooks to test non-admin user scenarios
+# false (default): multi-user namespace lab — SA with RoleBindings in each student namespace
+# true: dedicated cluster lab — SA with cluster-admin ClusterRoleBinding
 ocp4_workload_runtime_automation_k8s_cluster_admin: false

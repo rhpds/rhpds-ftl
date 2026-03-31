@@ -1,5 +1,10 @@
 ---
-- name: Delete ClusterRoleBinding for impersonator
+# SA and Secrets in showroom namespace are deleted automatically when
+# the showroom namespace itself is deleted by ocp4_workload_showroom remove.
+# Only the ClusterRoleBinding (dedicated mode) needs explicit cleanup.
+
+- name: Delete cluster-admin ClusterRoleBinding (dedicated mode only)
+  when: ocp4_workload_runtime_automation_k8s_cluster_admin | bool
   kubernetes.core.k8s:
     host: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_url | default(omit) }}"
     api_key: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_token | default(omit) }}"
@@ -7,29 +12,4 @@
     state: absent
     api_version: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
-    name: "zt-impersonator-{{ guid }}"
-
-- name: Delete ClusterRole for impersonator
-  kubernetes.core.k8s:
-    host: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_url | default(omit) }}"
-    api_key: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_token | default(omit) }}"
-    validate_certs: false
-    state: absent
-    api_version: rbac.authorization.k8s.io/v1
-    kind: ClusterRole
-    name: "zt-impersonator-{{ guid }}"
-
-- name: Delete kubeconfig Secret and impersonator SA from showroom namespace
-  kubernetes.core.k8s:
-    host: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_url | default(omit) }}"
-    api_key: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_token | default(omit) }}"
-    validate_certs: false
-    state: absent
-    api_version: v1
-    kind: "{{ item.kind }}"
-    name: "{{ item.name }}"
-    namespace: "{{ ocp4_workload_runtime_automation_k8s_showroom_namespace }}"
-  loop:
-    - {kind: Secret, name: "{{ ocp4_workload_runtime_automation_k8s_secret_name }}"}
-    - {kind: Secret, name: zt-impersonator-token}
-    - {kind: ServiceAccount, name: zt-impersonator}
+    name: "zt-runner-{{ guid }}"
