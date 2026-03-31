@@ -1,25 +1,35 @@
 ---
-- name: Delete kubeconfig Secret from showroom namespace
+- name: Delete ClusterRoleBinding for impersonator
   kubernetes.core.k8s:
     host: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_url | default(omit) }}"
     api_key: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_token | default(omit) }}"
     validate_certs: false
     state: absent
-    api_version: v1
-    kind: Secret
-    name: "{{ ocp4_workload_runtime_automation_k8s_secret_name }}"
-    namespace: "{{ ocp4_workload_runtime_automation_k8s_showroom_namespace }}"
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    name: "zt-impersonator-{{ guid }}"
 
-- name: Delete zt-runner SA token and SA from student namespaces
+- name: Delete ClusterRole for impersonator
+  kubernetes.core.k8s:
+    host: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_url | default(omit) }}"
+    api_key: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    state: absent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    name: "zt-impersonator-{{ guid }}"
+
+- name: Delete kubeconfig Secret and impersonator SA from showroom namespace
   kubernetes.core.k8s:
     host: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_url | default(omit) }}"
     api_key: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_token | default(omit) }}"
     validate_certs: false
     state: absent
     api_version: v1
-    kind: ServiceAccount
-    name: "{{ ocp4_workload_runtime_automation_k8s_sa_name }}"
-    namespace: "{{ ocp4_workload_runtime_automation_k8s_username }}-{{ item.suffix }}"
-  loop: "{{ ocp4_workload_runtime_automation_k8s_namespace_suffixes }}"
-  loop_control:
-    label: "{{ ocp4_workload_runtime_automation_k8s_username }}-{{ item.suffix }}"
+    kind: "{{ item.kind }}"
+    name: "{{ item.name }}"
+    namespace: "{{ ocp4_workload_runtime_automation_k8s_showroom_namespace }}"
+  loop:
+    - {kind: Secret, name: "{{ ocp4_workload_runtime_automation_k8s_secret_name }}"}
+    - {kind: Secret, name: zt-impersonator-token}
+    - {kind: ServiceAccount, name: zt-impersonator}
