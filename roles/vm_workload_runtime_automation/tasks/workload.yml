@@ -75,13 +75,6 @@
   failed_when: false
   changed_when: false
 
-- name: Resolve bastion service IP via cluster DNS
-  ansible.builtin.command: >
-    getent hosts bastion.sandbox-{{ guid }}-ocp4-cluster.svc.cluster.local
-  register: r_bastion_ip
-  failed_when: false
-  changed_when: false
-
 - name: Write SSH config with bastion + node host entries
   become: true
   ansible.builtin.blockinfile:
@@ -92,15 +85,14 @@
     mode: '0600'
     marker: "# {mark} ZT hosts"
     block: |
-      {% if r_bastion_ip.rc == 0 and r_bastion_ip.stdout != '' %}
-      # bastion — runner SSHes here for bastion-level tasks
+      # bastion — SSH via external NodePort (only path accessible from runner container)
       Host bastion
-        HostName {{ r_bastion_ip.stdout.split()[0] }}
+        HostName {{ openshift_cnv_ssh_address }}
+        Port {{ hostvars[groups['bastions'][0]].bastion_ssh_port | default(22) }}
         User {{ student_name | default('lab-user') }}
         IdentityFile /app/.ssh/id_rsa
         StrictHostKeyChecking no
         UserKnownHostsFile /dev/null
-      {% endif %}
 
       {% for item in r_getent.results %}
       {% if item.rc == 0 and item.stdout != '' %}
