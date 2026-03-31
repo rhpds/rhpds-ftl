@@ -5,8 +5,8 @@
 # Runs on the bastion AFTER vm_workload_showroom.
 # Prepares the ansible-runner-api container for ZT grading:
 #   1. Copies the lab SSH key so the runner can SSH to nodes
-#   2. Injects node IP→hostname mappings into the container's /etc/hosts
-#      so playbooks can address nodes by name (node, node01, node02...)
+#   2. Resolves node IPs via bastion DNS (getent hosts) and injects
+#      into the runner container's /etc/hosts
 # =============================================================================
 
 - name: Copy lab SSH key to showroom .ssh directory
@@ -19,32 +19,34 @@
     mode: '0600'
     remote_src: true
 
-- name: Build node hosts list from Ansible inventory
+- name: Build node hostname list from inventory groups
   ansible.builtin.set_fact:
-    _zt_node_hosts: >-
+    _zt_node_names: >-
       {%- set result = [] -%}
       {%- for group in vm_workload_runtime_automation_node_groups -%}
         {%- for node in groups[group] | default([]) -%}
-          {%- set ns = namespace(ip='') -%}
-          {%- for key in ['ansible_host', 'ansible_ssh_host'] -%}
-            {%- if ns.ip == '' and key in hostvars[node] -%}
-              {%- set ns.ip = hostvars[node][key] -%}
-            {%- endif -%}
-          {%- endfor -%}
-          {%- if ns.ip != '' -%}
-            {%- set _ = result.append({'name': node, 'ip': ns.ip}) -%}
-          {%- endif -%}
+          {%- set _ = result.append(node) -%}
         {%- endfor -%}
       {%- endfor -%}
       {{ result }}
+
+- name: Resolve node IPs via bastion DNS
+  ansible.builtin.command: getent hosts {{ item }}
+  loop: "{{ _zt_node_names }}"
+  register: r_getent
+  failed_when: false
+  changed_when: false
 
 - name: Inject node entries into runner container /etc/hosts
   become: true
   become_user: "{{ vm_workload_runtime_automation_showroom_user }}"
   ansible.builtin.shell: >-
     podman exec {{ vm_workload_runtime_automation_runner_container }}
-    sh -c "grep -q ' {{ item.name }}$' /etc/hosts ||
-           echo '{{ item.ip }} {{ item.name }}' >> /etc/hosts"
-  loop: "{{ _zt_node_hosts }}"
+    sh -c "grep -q ' {{ item.item }}$' /etc/hosts ||
+           echo '{{ item.stdout.split()[0] }} {{ item.item }}' >> /etc/hosts"
+  loop: "{{ r_getent.results }}"
+  when:
+    - item.rc == 0
+    - item.stdout != ''
   loop_control:
-    label: "{{ item.name }} -> {{ item.ip }}"
+    label: "{{ item.item }} -> {{ item.stdout.split()[0] if item.stdout else 'unresolved' }}"
