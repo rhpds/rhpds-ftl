@@ -14,6 +14,27 @@
 #   - Student owns the whole cluster
 # =============================================================================
 
+- name: Discover showroom namespace by listing namespaces matching showroom-{guid}*
+  when: ocp4_workload_showroom_namespace is not defined
+  kubernetes.core.k8s_info:
+    host: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_url | default(omit) }}"
+    api_key: "{{ ocp4_workload_runtime_automation_k8s_openshift_api_token | default(omit) }}"
+    validate_certs: false
+    api_version: v1
+    kind: Namespace
+  register: r_all_ns
+
+- name: Set showroom namespace from discovered namespace (first match of showroom-{guid}*)
+  when: ocp4_workload_showroom_namespace is not defined
+  ansible.builtin.set_fact:
+    ocp4_workload_runtime_automation_k8s_showroom_namespace: >-
+      {{ r_all_ns.resources
+         | map(attribute='metadata.name')
+         | select('match', '^showroom-' + guid)
+         | list
+         | first
+         | default('showroom-' + guid) }}
+
 - name: Build student namespace list
   ansible.builtin.set_fact:
     _zt_runner_namespaces: >-
