@@ -87,6 +87,14 @@
            | map('default', 'unknown')
          )) }}
 
+
+- name: Build overall pass/fail status
+  ansible.builtin.set_fact:
+    _all_passed: >-
+      {{ '✗ Failed' not in (_solve_summary.values() | list) and
+         '✗ Failed' not in (_val_summary.values() | list) and
+         'unknown' not in (_val_summary.values() | list) }}
+
 - name: Report load test results
   agnosticd.core.agnosticd_user_info:
     data:

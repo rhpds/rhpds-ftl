@@ -86,18 +86,32 @@
            | map('default', 'unknown')
          )) }}
 
+- name: Build overall pass/fail status
+  ansible.builtin.set_fact:
+    _all_passed: >-
+      {{ '✗ Failed' not in (_solve_summary.values() | list) and
+         '✗ Failed' not in (_val_summary.values() | list) and
+         'unknown' not in (_val_summary.values() | list) }}
+
 - name: Report load test results
   agnosticd.core.agnosticd_user_info:
     data:
-      zt_load_test_solve: "{{ _solve_summary }}"
-      zt_load_test_validate: "{{ _val_summary }}"
+      e2e_status: "{{ '✅ ALL PASSED' if _all_passed else '❌ FAILURES DETECTED' }}"
+      e2e_solve: "{{ _solve_summary }}"
+      e2e_validate: "{{ _val_summary }}"
     msg: |
-      E2E Load Test (OCP) — {{ zt_load_test_ocp_showroom_namespace }}
-      Solve:    {{ _solve_summary }}
-      Validate: {{ _val_summary }}
+      ═══════════════════════════════════════
+      E2E Load Test — {{ 'ALL PASSED ✅' if _all_passed else 'FAILURES ❌' }}
+      ═══════════════════════════════════════
+      {% for m in _modules %}
+      {{ m }}:
+        Solve:    {{ _solve_summary[m] | default('unknown') }}
+        Validate: {{ _val_summary[m] | default('unknown') }}
+      {% endfor %}
+      ═══════════════════════════════════════
   ignore_errors: true
 
-- name: Fail if any validation failed
+- name: Fail provision if any validation failed
   ansible.builtin.fail:
     msg: >-
       E2E load test failures!
