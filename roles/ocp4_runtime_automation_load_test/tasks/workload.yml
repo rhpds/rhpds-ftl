@@ -16,7 +16,7 @@
 
 - name: Fail if showroom route not found
   ansible.builtin.fail:
-    msg: "Showroom route not found in {{ zt_load_test_ocp_showroom_namespace }}"
+    msg: "Showroom route not found in {{ zt_load_test_ocp_showroom_namespace }} — is showroom deployed?"
   when: r_route.resources | length == 0
 
 - name: Set runner base URL (SSE /stream/ API)

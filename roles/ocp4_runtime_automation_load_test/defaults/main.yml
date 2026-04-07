@@ -6,7 +6,7 @@
 zt_load_test_ocp_showroom_namespace: >-
   {{
     ocp4_workload_showroom_namespace
-    | default(ocp4_workload_tenant_keycloak_username | default('devuser-' + guid) + '-showroom')
+    | default('showroom-' + guid)
   }}
 
 # Seconds to wait for runner API
