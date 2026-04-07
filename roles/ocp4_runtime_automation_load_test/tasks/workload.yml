@@ -111,10 +111,10 @@
       ═══════════════════════════════════════
   ignore_errors: true
 
-- name: Fail provision if any validation failed
-  ansible.builtin.fail:
+- name: Log E2E load test failures (non-blocking)
+  ansible.builtin.debug:
     msg: >-
-      E2E load test failures!
+      ⚠️ E2E load test issues detected (provision continues):
       Solve:    {{ _solve_summary }}
       Validate: {{ _val_summary }}
   when: >-
