@@ -25,8 +25,3 @@ ocp4_workload_runtime_automation_k8s_openshift_api_token: "{{ openshift_api_key 
 # true: dedicated cluster lab — SA with cluster-admin ClusterRoleBinding
 ocp4_workload_runtime_automation_k8s_cluster_admin: false
 
-# Port the zt-runner container listens on (zerotouch chart hardcodes PORT=8501)
-ocp4_workload_runtime_automation_k8s_runner_port: 8501
-
-# Name of the showroom proxy ConfigMap (zerotouch chart: <release-name>-proxy-config)
-ocp4_workload_runtime_automation_k8s_nginx_cm_name: showroom-proxy-config
