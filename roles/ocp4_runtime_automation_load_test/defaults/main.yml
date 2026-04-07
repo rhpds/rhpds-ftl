@@ -23,6 +23,7 @@ zt_load_test_ocp_openshift_api_token: >-
     | default(cluster_admin_agnosticd_sa_token)
     | default(openshift_api_key)
     | default('')
+    | trim
   }}
 
 # Max seconds to wait for a single module solve/validate SSE stream
