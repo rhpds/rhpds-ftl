@@ -72,8 +72,8 @@
       {{ dict(_modules | zip(
            r_solve_results.results
            | map(attribute='stdout', default='')
-           | map('regex_search', '✓ Completed successfully!|✗ Failed')
-           | map('default', 'unknown')
+           | map('regex_search', 'Completed successfully|\u2713|Failed|\u2717')
+           | map('default', 'unknown', true)
          )) }}
 
 - name: Build validate results summary
@@ -82,15 +82,15 @@
       {{ dict(_modules | zip(
            r_val_results.results
            | map(attribute='stdout', default='')
-           | map('regex_search', '✓ Completed successfully!|✗ Failed')
-           | map('default', 'unknown')
+           | map('regex_search', 'Completed successfully|\u2713|Failed|\u2717')
+           | map('default', 'unknown', true)
          )) }}
 
 - name: Build overall pass/fail status
   ansible.builtin.set_fact:
     _all_passed: >-
-      {{ '✗ Failed' not in (_solve_summary.values() | list) and
-         '✗ Failed' not in (_val_summary.values() | list) and
+      {{ 'Failed' not in (_solve_summary.values() | list | join(' ')) and
+         'Failed' not in (_val_summary.values() | list | join(' ')) and
          'unknown' not in (_val_summary.values() | list) }}
 
 - name: Report load test results
