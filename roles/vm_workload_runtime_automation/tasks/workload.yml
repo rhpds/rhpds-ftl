@@ -104,3 +104,9 @@
         UserKnownHostsFile /dev/null
       {% endif %}
       {% endfor %}
+
+      Host *
+        User lab-user
+        IdentityFile /app/.ssh/id_rsa
+        StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
