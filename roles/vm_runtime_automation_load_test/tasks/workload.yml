@@ -1,14 +1,16 @@
 ---
 # =============================================================================
 # vm_runtime_automation_load_test
-# Runs ON the bastion host — showroom/runner are local (podman compose)
-# No kubernetes.core needed — curls localhost directly
+# Runs ON the bastion host — routes through traefik (port 80) via Host header.
+# The runner container is NOT published to the host; traefik IS on port 80.
 # Add to: post_software_final_workloads.bastions (after vm_workload_runtime_automation)
 # =============================================================================
 
 - name: Wait for runner to be ready on bastion
   ansible.builtin.uri:
-    url: "http://localhost:{{ zt_load_test_rhel_runner_port }}/health"
+    url: "http://localhost:{{ zt_load_test_rhel_traefik_port }}{{ zt_load_test_rhel_runner_path }}/health"
+    headers:
+      Host: "{{ zt_load_test_rhel_runner_host }}"
     status_code: 200
   register: r_health
   retries: "{{ (zt_load_test_rhel_wait_seconds | int / 10) | int }}"
@@ -18,7 +20,9 @@
 
 - name: Get available modules
   ansible.builtin.uri:
-    url: "http://localhost:{{ zt_load_test_rhel_runner_port }}/config"
+    url: "http://localhost:{{ zt_load_test_rhel_traefik_port }}{{ zt_load_test_rhel_runner_path }}/config"
+    headers:
+      Host: "{{ zt_load_test_rhel_runner_host }}"
     status_code: 200
   register: r_config
   when: r_health is not failed
@@ -32,7 +36,8 @@
   ansible.builtin.shell:
     cmd: >-
       curl -sk -N --max-time {{ zt_load_test_rhel_module_timeout }}
-      "http://localhost:{{ zt_load_test_rhel_runner_port }}{{ zt_load_test_rhel_runner_path }}/solve/{{ item }}"
+      -H "Host: {{ zt_load_test_rhel_runner_host }}"
+      "http://localhost:{{ zt_load_test_rhel_traefik_port }}{{ zt_load_test_rhel_runner_path }}/solve/{{ item }}"
   register: r_solve_results
   loop: "{{ _modules | default([]) }}"
   loop_control:
@@ -44,8 +49,8 @@
   ansible.builtin.shell:
     cmd: >-
       curl -sk -N --max-time {{ zt_load_test_rhel_module_timeout }}
-      "http://localhost:{{ zt_load_test_rhel_runner_port }}{{ zt_load_test_rhel_runner_path }}/validate/{{ item }}"
-
+      -H "Host: {{ zt_load_test_rhel_runner_host }}"
+      "http://localhost:{{ zt_load_test_rhel_traefik_port }}{{ zt_load_test_rhel_runner_path }}/validate/{{ item }}"
   register: r_val_results
   loop: "{{ _modules | default([]) }}"
   loop_control:
