@@ -1,14 +1,17 @@
 ---
 # vm_runtime_automation_load_test
-# Runs ON the bastion — curls localhost runner directly (no kubernetes.core)
+# Runs ON the bastion — routes through traefik (port 80) via Host header.
+# No direct port access needed: the runner is not published to the host.
 # Add to: post_software_final_workloads.bastions after vm_workload_runtime_automation
 
-# Port the zt-runner listens on (set by showroom_ansible_runner_api_port, default 8501)
-zt_load_test_rhel_runner_port: "{{ showroom_ansible_runner_api_port | default(8501) }}"
+# Traefik port on the bastion host
+zt_load_test_rhel_traefik_port: "{{ showroom_traefik_port | default(80) }}"
 
-# API path prefix — zt-runner:v2.4.x uses /stream/* (was empty in v2.3.x)
-# Set showroom_ansible_runner_path: "/stream" in catalog for v2.4.x
-zt_load_test_rhel_runner_path: "{{ showroom_ansible_runner_path | default('') }}"
+# Path prefix traefik strips before forwarding to the runner container
+zt_load_test_rhel_runner_path: "{{ showroom_ansible_runner_path | default('/stream') }}"
+
+# Host header for traefik routing (must match the showroom traefik rule)
+zt_load_test_rhel_runner_host: "{{ showroom_host }}"
 
 # Seconds to wait for runner to be ready
 zt_load_test_rhel_wait_seconds: 120
